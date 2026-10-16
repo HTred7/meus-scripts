@@ -1,0 +1,541 @@
+-- ============================================================
+-- AxomJB Corsa Legends Hub
+-- 配色: 主色 #5CACEE | 字体 #000000
+-- 注入执行器后运行。功能实现依赖于正确的 Remote 事件抓取。
+-- ============================================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+-- ==================== 配色定义 ====================
+local Theme = {
+    Primary   = Color3.fromRGB(92, 172, 238),   -- #5CACEE
+    Text      = Color3.fromRGB(0, 0, 0),        -- #000000
+    Secondary = Color3.fromRGB(255, 255, 255),
+    Danger    = Color3.fromRGB(220, 60, 60),
+}
+
+-- ==================== 创建 ScreenGui ====================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AxomJB_CorsaHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ==================== 主窗口 ====================
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 520, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -190)
+MainFrame.BackgroundColor3 = Theme.Primary
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+-- ==================== 标题栏 ====================
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Theme.Primary
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+TitleLabel.Position = UDim2.new(0, 20, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "AxomJB | Corsa Legends"
+TitleLabel.TextColor3 = Theme.Text
+TitleLabel.TextSize = 20
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = TitleBar
+
+-- ==================== 关闭按钮 ====================
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -40, 0, 5)
+CloseBtn.BackgroundColor3 = Theme.Danger
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Parent = TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseBtn
+
+-- ==================== Tab 按钮容器 ====================
+local TabBar = Instance.new("Frame")
+TabBar.Name = "TabBar"
+TabBar.Size = UDim2.new(0, 130, 1, -50)
+TabBar.Position = UDim2.new(0, 10, 0, 45)
+TabBar.BackgroundColor3 = Theme.Primary
+TabBar.BorderSizePixel = 0
+TabBar.Parent = MainFrame
+
+local TabCorner = Instance.new("UICorner")
+TabCorner.CornerRadius = UDim.new(0, 10)
+TabCorner.Parent = TabBar
+
+-- ==================== 内容区域 ====================
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -160, 1, -60)
+ContentFrame.Position = UDim2.new(0, 150, 0, 50)
+ContentFrame.BackgroundColor3 = Theme.Secondary
+ContentFrame.BorderSizePixel = 0
+ContentFrame.Parent = MainFrame
+
+local ContentCorner = Instance.new("UICorner")
+ContentCorner.CornerRadius = UDim.new(0, 10)
+ContentCorner.Parent = ContentFrame
+
+-- ==================== Tab 切换逻辑 ====================
+local currentTab = nil
+local tabButtons = {}
+local tabPages = {}
+
+local function switchTab(tabName)
+    for name, page in pairs(tabPages) do
+        page.Visible = (name == tabName)
+    end
+    for name, btn in pairs(tabButtons) do
+        btn.BackgroundColor3 = (name == tabName) and Theme.Secondary or Theme.Primary
+        btn.TextColor3 = (name == tabName) and Theme.Primary or Theme.Text
+    end
+    currentTab = tabName
+end
+
+local function createTabButton(name, order)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 36)
+    btn.Position = UDim2.new(0, 10, 0, 10 + (order * 44))
+    btn.BackgroundColor3 = Theme.Primary
+    btn.Text = name
+    btn.TextColor3 = Theme.Text
+    btn.TextSize = 16
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = TabBar
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        switchTab(name)
+    end)
+    
+    tabButtons[name] = btn
+    return btn
+end
+
+local function createTabPage(name)
+    local page = Instance.new("Frame")
+    page.Name = name .. "Page"
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.Parent = ContentFrame
+    tabPages[name] = page
+    return page
+end
+
+-- ==================== 创建三个页面 ====================
+createTabButton("Farm", 0)
+createTabButton("Settings", 1)
+createTabButton("Shop", 2)
+
+local FarmPage = createTabPage("Farm")
+local SettingsPage = createTabPage("Settings")
+local ShopPage = createTabPage("Shop")
+
+-- ==================== 组件创建辅助函数 ====================
+local function createSectionLabel(parent, text, yPos)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -20, 0, 30)
+    lbl.Position = UDim2.new(0, 10, 0, yPos)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Theme.Text
+    lbl.TextSize = 18
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = parent
+    return lbl
+end
+
+local function createToggle(parent, text, yPos, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -20, 0, 35)
+    frame.Position = UDim2.new(0, 10, 0, yPos)
+    frame.BackgroundTransparency = 1
+    frame.Parent = parent
+    
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.7, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Theme.Text
+    lbl.TextSize = 14
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = frame
+    
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 50, 0, 25)
+    btn.Position = UDim2.new(1, -55, 0, 5)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+    btn.Text = "OFF"
+    btn.TextColor3 = Theme.Text
+    btn.TextSize = 12
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = frame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = state and "ON" or "OFF"
+        btn.BackgroundColor3 = state and Theme.Primary or Color3.fromRGB(180, 180, 180)
+        if callback then callback(state) end
+    end)
+    
+    return btn
+end
+
+local function createButton(parent, text, yPos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 36)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Theme.Primary
+    btn.Text = text
+    btn.TextColor3 = Theme.Text
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+    
+    return btn
+end
+
+-- ==================== 通用 Remote 查找器 (占位) ====================
+-- 你需要用 DarkDEX 或类似工具找到正确的 RemoteEvent 路径。
+-- 以下函数仅为结构展示，实际路径必须替换为游戏中的真实路径。
+local function getRemote(pathString)
+    warn("[AxomJB] Remote 路径未配置: " .. tostring(pathString))
+    return nil
+end
+
+-- ============================================================
+-- FARM 页面
+-- ============================================================
+createSectionLabel(FarmPage, "自动竞速", 10)
+
+local autoRaceState = false
+local autoMissionState = false
+
+local function autoRaceLoop()
+    while autoRaceState do
+        task.wait(0.5)
+        -- TODO: 替换为真实的进入竞速 Remote
+        -- 示例逻辑：
+        -- local raceRemote = getRemote("ReplicatedStorage.Remotes.EnterRace")
+        -- if raceRemote then
+        --     raceRemote:FireServer("DragonTailRace")
+        -- end
+        print("[AxomJB] AutoRace: 等待 Remote 配置...")
+    end
+end
+
+local function autoMissionLoop()
+    while autoMissionState do
+        task.wait(1)
+        -- TODO: 替换为真实的接取/完成任务的 Remote
+        -- 示例：
+        -- local questRemote = getRemote("ReplicatedStorage.Remotes.Quest")
+        -- if questRemote then
+        --     questRemote:InvokeServer("AcceptDaily")
+        -- end
+        print("[AxomJB] AutoMission: 等待 Remote 配置...")
+    end
+end
+
+createToggle(FarmPage, "Auto Race (Dragon Tail)", 45, function(state)
+    autoRaceState = state
+    if state then
+        task.spawn(autoRaceLoop)
+    end
+end)
+
+createToggle(FarmPage, "Auto Mission", 85, function(state)
+    autoMissionState = state
+    if state then
+        task.spawn(autoMissionLoop)
+    end
+end)
+
+-- ============================================================
+-- SETTINGS 页面
+-- ============================================================
+createSectionLabel(SettingsPage, "菜单设置", 10)
+
+-- 按键设置 (简化版，显示当前按键，点击后等待输入)
+local currentKeybind = Enum.KeyCode.RightShift
+local listeningForInput = false
+
+local KeybindFrame = Instance.new("Frame")
+KeybindFrame.Size = UDim2.new(1, -20, 0, 35)
+KeybindFrame.Position = UDim2.new(0, 10, 0, 45)
+KeybindFrame.BackgroundTransparency = 1
+KeybindFrame.Parent = SettingsPage
+
+local KeybindLabel = Instance.new("TextLabel")
+KeybindLabel.Size = UDim2.new(0.6, 0, 1, 0)
+KeybindLabel.BackgroundTransparency = 1
+KeybindLabel.Text = "菜单开关按键"
+KeybindLabel.TextColor3 = Theme.Text
+KeybindLabel.TextSize = 14
+KeybindLabel.Font = Enum.Font.Gotham
+KeybindLabel.TextXAlignment = Enum.TextXAlignment.Left
+KeybindLabel.Parent = KeybindFrame
+
+local KeybindBtn = Instance.new("TextButton")
+KeybindBtn.Size = UDim2.new(0, 100, 0, 28)
+KeybindBtn.Position = UDim2.new(1, -105, 0, 3)
+KeybindBtn.BackgroundColor3 = Theme.Primary
+KeybindBtn.Text = currentKeybind.Name
+KeybindBtn.TextColor3 = Theme.Text
+KeybindBtn.TextSize = 13
+KeybindBtn.Font = Enum.Font.GothamBold
+KeybindBtn.BorderSizePixel = 0
+KeybindBtn.Parent = KeybindFrame
+
+local KeyCorner = Instance.new("UICorner")
+KeyCorner.CornerRadius = UDim.new(0, 6)
+KeyCorner.Parent = KeybindBtn
+
+KeybindBtn.MouseButton1Click:Connect(function()
+    listeningForInput = true
+    KeybindBtn.Text = "..."
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if listeningForInput and input.KeyCode ~= Enum.KeyCode.Unknown then
+        currentKeybind = input.KeyCode
+        listeningForInput = false
+        KeybindBtn.Text = currentKeybind.Name
+        return
+    end
+    
+    if input.KeyCode == currentKeybind then
+        MainFrame.Visible = not MainFrame.Visible
+        if MainFrame.Visible then
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+                Size = UDim2.new(0, 520, 0, 380)
+            }):Play()
+        end
+    end
+end)
+
+-- Anti-Lag 按钮
+createSectionLabel(SettingsPage, "性能优化", 95)
+
+createButton(SettingsPage, "启用 Anti-Lag (降低画质)", 130, function()
+    local Lighting = game:GetService("Lighting")
+    
+    -- 关闭全局阴影
+    Lighting.GlobalShadows = false
+    -- 降低光照质量
+    Lighting.Brightness = 0
+    Lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 80)
+    
+    -- 移除粒子效果
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") then
+            obj.Enabled = false
+        end
+    end
+    
+    print("[AxomJB] Anti-Lag: 已应用 (部分效果，完整优化需持续遍历)")
+end)
+
+-- ============================================================
+-- SHOP 页面
+-- ============================================================
+createSectionLabel(ShopPage, "箱子购买", 10)
+
+-- 箱子选择
+local CrateFrame = Instance.new("Frame")
+CrateFrame.Size = UDim2.new(1, -20, 0, 35)
+CrateFrame.Position = UDim2.new(0, 10, 0, 45)
+CrateFrame.BackgroundTransparency = 1
+CrateFrame.Parent = ShopPage
+
+local CrateLabel = Instance.new("TextLabel")
+CrateLabel.Size = UDim2.new(0.6, 0, 1, 0)
+CrateLabel.BackgroundTransparency = 1
+CrateLabel.Text = "选择箱子"
+CrateLabel.TextColor3 = Theme.Text
+CrateLabel.TextSize = 14
+CrateLabel.Font = Enum.Font.Gotham
+CrateLabel.TextXAlignment = Enum.TextXAlignment.Left
+CrateLabel.Parent = CrateFrame
+
+-- 用简单按钮模拟下拉，实际可替换为更复杂的下拉组件
+local selectedCrate = "Common"
+local CrateBtn = Instance.new("TextButton")
+CrateBtn.Size = UDim2.new(0, 100, 0, 28)
+CrateBtn.Position = UDim2.new(1, -105, 0, 3)
+CrateBtn.BackgroundColor3 = Theme.Primary
+CrateBtn.Text = selectedCrate
+CrateBtn.TextColor3 = Theme.Text
+CrateBtn.TextSize = 13
+CrateBtn.Font = Enum.Font.GothamBold
+CrateBtn.BorderSizePixel = 0
+CrateBtn.Parent = CrateFrame
+
+local CrateCorner = Instance.new("UICorner")
+CrateCorner.CornerRadius = UDim.new(0, 6)
+CrateCorner.Parent = CrateBtn
+
+local crateOptions = {"Common", "Rare", "Epic", "Legendary"}
+local crateIndex = 1
+
+CrateBtn.MouseButton1Click:Connect(function()
+    crateIndex = crateIndex + 1
+    if crateIndex > #crateOptions then crateIndex = 1 end
+    selectedCrate = crateOptions[crateIndex]
+    CrateBtn.Text = selectedCrate
+end)
+
+-- 数量输入
+local AmountFrame = Instance.new("Frame")
+AmountFrame.Size = UDim2.new(1, -20, 0, 35)
+AmountFrame.Position = UDim2.new(0, 10, 0, 85)
+AmountFrame.BackgroundTransparency = 1
+AmountFrame.Parent = ShopPage
+
+local AmountLabel = Instance.new("TextLabel")
+AmountLabel.Size = UDim2.new(0.6, 0, 1, 0)
+AmountLabel.BackgroundTransparency = 1
+AmountLabel.Text = "购买数量"
+AmountLabel.TextColor3 = Theme.Text
+AmountLabel.TextSize = 14
+AmountLabel.Font = Enum.Font.Gotham
+AmountLabel.TextXAlignment = Enum.TextXAlignment.Left
+AmountLabel.Parent = AmountFrame
+
+local AmountInput = Instance.new("TextBox")
+AmountInput.Size = UDim2.new(0, 100, 0, 28)
+AmountInput.Position = UDim2.new(1, -105, 0, 3)
+AmountInput.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+AmountInput.Text = "1"
+AmountInput.TextColor3 = Theme.Text
+AmountInput.TextSize = 13
+AmountInput.Font = Enum.Font.GothamBold
+AmountInput.BorderSizePixel = 0
+AmountInput.Parent = AmountFrame
+
+local AmountCorner = Instance.new("UICorner")
+AmountCorner.CornerRadius = UDim.new(0, 6)
+AmountCorner.Parent = AmountInput
+
+-- 购买按钮
+createButton(ShopPage, "购买箱子", 125, function()
+    local amount = tonumber(AmountInput.Text) or 1
+    -- TODO: 替换为真实的购买箱子 Remote
+    -- local buyCrateRemote = getRemote("ReplicatedStorage.Remotes.BuyCrate")
+    -- if buyCrateRemote then
+    --     for i = 1, amount do
+    --         buyCrateRemote:FireServer(selectedCrate)
+    --         task.wait(0.2)
+    --     end
+    -- end
+    print(string.format("[AxomJB] 购买请求: %s x %d (等待 Remote 配置)", selectedCrate, amount))
+end)
+
+-- ==================== 车辆购买 ====================
+createSectionLabel(ShopPage, "车辆购买", 175)
+
+local carFrame = Instance.new("Frame")
+carFrame.Size = UDim2.new(1, -20, 0, 35)
+carFrame.Position = UDim2.new(0, 10, 0, 210)
+carFrame.BackgroundTransparency = 1
+carFrame.Parent = ShopPage
+
+local carLabel = Instance.new("TextLabel")
+carLabel.Size = UDim2.new(0.6, 0, 1, 0)
+carLabel.BackgroundTransparency = 1
+carLabel.Text = "选择车辆"
+carLabel.TextColor3 = Theme.Text
+carLabel.TextSize = 14
+carLabel.Font = Enum.Font.Gotham
+carLabel.TextXAlignment = Enum.TextXAlignment.Left
+carLabel.Parent = carFrame
+
+local carOptions = {"Starter", "Sedan", "Sports", "Super"}
+local carIndex = 1
+local selectedCar = carOptions[1]
+
+local carBtn = Instance.new("TextButton")
+carBtn.Size = UDim2.new(0, 100, 0, 28)
+carBtn.Position = UDim2.new(1, -105, 0, 3)
+carBtn.BackgroundColor3 = Theme.Primary
+carBtn.Text = selectedCar
+carBtn.TextColor3 = Theme.Text
+carBtn.TextSize = 13
+carBtn.Font = Enum.Font.GothamBold
+carBtn.BorderSizePixel = 0
+carBtn.Parent = carFrame
+
+local CarCorner = Instance.new("UICorner")
+CarCorner.CornerRadius = UDim.new(0, 6)
+CarCorner.Parent = carBtn
+
+carBtn.MouseButton1Click:Connect(function()
+    carIndex = carIndex + 1
+    if carIndex > #carOptions then carIndex = 1 end
+    selectedCar = carOptions[carIndex]
+    carBtn.Text = selectedCar
+end)
+
+createButton(ShopPage, "购买车辆", 250, function()
+    -- TODO: 替换为真实的购买车辆 Remote
+    print("[AxomJB] 购买车辆: " .. selectedCar .. " (等待 Remote 配置)")
+end)
+
+-- ==================== 初始状态 ====================
+switchTab("Farm")
+MainFrame.Visible = true
